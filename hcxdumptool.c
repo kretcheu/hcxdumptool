@@ -84,13 +84,13 @@ static int fd_socket_mcsrv;
 static struct sockaddr_in mcsrvaddress;
 static struct sockaddr_in srvaddress;
 static int fd_socket_srv;
-
 static int interfacetxpwr;
 
 static FILE *fh_nmea;
 static struct ifreq ifr_old;
 static struct iwreq iwr_old;
 
+static bool forceinterfaceflag;
 static bool targetscanflag;
 static bool totflag;
 static bool poweroffflag;
@@ -5975,7 +5975,7 @@ while(wantstopflag == false)
 	if(errorcount >= maxerrorcount)
 		{
 		fprintf(stderr, "\nmaximum number of errors is reached\n");
-		globalclose();
+		if(forceinterfaceflag == false) globalclose();
 		}
 	if(gpiobutton > 0)
 		{
@@ -6302,7 +6302,7 @@ while(wantstopflag == false)
 	if(errorcount >= maxerrorcount)
 		{
 		fprintf(stderr, "\nmaximum number of errors is reached\n");
-		globalclose();
+		if(forceinterfaceflag == false) globalclose();
 		}
 	if(gpiobutton > 0)
 		{
@@ -6417,7 +6417,7 @@ while(wantstopflag == false)
 	if(errorcount >= maxerrorcount)
 		{
 		fprintf(stderr, "\nmaximum number of errors is reached\n");
-		globalclose();
+		if(forceinterfaceflag == false) globalclose();
 		}
 	if(gpiobutton > 0)
 		{
@@ -6976,6 +6976,7 @@ memset(&drivername, 0, 34);
 memset(&driverversion, 0, 34);
 memset(&driverfwversion, 0, 34);
 checkallunwanted();
+if(forceinterfaceflag == true)fprintf(stderr, "warning: ioctl() warnings are ignored -  if monitor mode, packet injection or channel switch is not working as expected\n");
 if(checkmonitorinterface(interfacename) == true) fprintf(stderr, "warning: %s is probably a virtual monitor interface and some attack modes may not work as expected\n", interfacename);
 if((fd_socket = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0)
 	{
@@ -6988,7 +6989,7 @@ strncpy(iwr.ifr_name, interfacename, IFNAMSIZ -1);
 if(ioctl(fd_socket, SIOCGIWNAME, &iwr) < 0)
 	{
 	perror("failed to detect wlan interface");
-	return false;
+	if(forceinterfaceflag == false) return false;
 	}
 strncpy(interfaceprotocol, iwr.u.name, IFNAMSIZ);
 if(bpf.len > 0)
@@ -7000,14 +7001,14 @@ strncpy(ifr_old.ifr_name, interfacename, IFNAMSIZ -1);
 if(ioctl(fd_socket, SIOCGIFFLAGS, &ifr_old) < 0)
 	{
 	perror("failed to backup current interface flags, ioctl(SIOCGIFFLAGS) not supported by driver");
-	return false;
+	if(forceinterfaceflag == false) return false;
 	}
 memset(&iwr_old, 0, sizeof(iwr));
 strncpy(iwr_old.ifr_name, interfacename, IFNAMSIZ -1);
 if(ioctl(fd_socket, SIOCGIWMODE, &iwr_old) < 0)
 	{
 	perror("failed to backup  current interface mode, ioctl(SIOCGIWMODE) not supported by driver");
-	return false;
+	if(forceinterfaceflag == false) return false;
 	}
 if((iwr_old.u.mode & IW_MODE_MONITOR) != IW_MODE_MONITOR)
 	{
@@ -7016,56 +7017,56 @@ if((iwr_old.u.mode & IW_MODE_MONITOR) != IW_MODE_MONITOR)
 	if(ioctl(fd_socket, SIOCGIFFLAGS, &ifr) < 0)
 		{
 		perror("failed to get current interface flags, ioctl(SIOCGIFFLAGS) not supported by driver");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	ifr.ifr_flags = 0;
 	if(ioctl(fd_socket, SIOCSIFFLAGS, &ifr) < 0)
 		{
 		perror("failed to set interface down, ioctl(SIOCSIFFLAGS) not supported by driver");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	memset(&iwr, 0, sizeof(iwr));
 	strncpy(iwr.ifr_name, interfacename, IFNAMSIZ -1);
 	if(ioctl(fd_socket, SIOCGIWMODE, &iwr) < 0)
 		{
 		perror("failed to get interface information, ioctl(SIOCGIWMODE) not supported by driver");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	iwr.u.mode = IW_MODE_MONITOR;
 	if(ioctl(fd_socket, SIOCSIWMODE, &iwr) < 0)
 		{
 		perror("failed to set monitor mode, ioctl(SIOCSIWMODE) not supported by driver");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	memset(&iwr, 0, sizeof(iwr));
 	strncpy(iwr.ifr_name, interfacename, IFNAMSIZ -1);
 	if(ioctl(fd_socket, SIOCGIWMODE, &iwr) < 0)
 		{
 		perror("failed to get interface information, ioctl(SIOCGIWMODE) not supported by driver");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	if((iwr.u.mode & IW_MODE_MONITOR) != IW_MODE_MONITOR)
 		{
-		fprintf(stderr, "warning: interface is not in monitor mode\n");
-		return false;
+		fprintf(stderr, "warning: physical interface is not in monitor mode\n");
+		if(forceinterfaceflag == false) return false;
 		}
 	ifr.ifr_flags = IFF_UP | IFF_BROADCAST | IFF_RUNNING;
 	if(ioctl(fd_socket, SIOCSIFFLAGS, &ifr) < 0)
 		{
 		perror("failed to set interface up, ioctl(SIOCSIFFLAGS) not supported by driver");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, interfacename, IFNAMSIZ -1);
 	if(ioctl(fd_socket, SIOCGIFFLAGS, &ifr) < 0)
 		{
 		perror("failed to get interface flags, ioctl(SIOCGIFFLAGS) not supported by driver");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	if((ifr.ifr_flags & (IFF_UP)) != (IFF_UP))
 		{
 		fprintf(stderr, "warning: interface is not up\n");
-		return false;
+		if(forceinterfaceflag == false) return false;
 		}
 	}
 else
@@ -8108,7 +8109,7 @@ printf("%s %s  (C) %s ZeroBeat\n"
 	"                                     affected: incoming and outgoing traffic - that include rca scan\n"
 	"                                     steps to create a BPF (it only has to be done once):\n"
 	"                                      set hcxdumptool monitormode\n"
-	"                                       $ hcxumptool -m <interface>\n"
+	"                                       $ hcxdumptool -m <interface>\n"
 	"                                      create BPF to protect a MAC\n"
 	"                                       $ tcpdump -i <interface> not wlan addr1 11:22:33:44:55:66 and not wlan addr2 11:22:33:44:55:66 -ddd > protect.bpf\n"
 	"                                       recommended to protect own devices\n"
@@ -8117,7 +8118,7 @@ printf("%s %s  (C) %s ZeroBeat\n"
 	"                                       it is strongly recommended to allow all PROBEREQUEST frames (wlan_type mgt && wlan_subtype probe-req)\n"
 	"                                       see man pcap-filter for a list of all filter options\n"
 	"                                      to use the BPF code\n"
-	"                                       $ hcxumptool -i <interface> --bpfc=attack.bpf ...\n"
+	"                                       $ hcxdumptool -i <interface> --bpfc=attack.bpf ...\n"
 	"                                     notice: this is a protect/attack, a capture and a display filter\n"
 	"--filtermode=<digit>               : user space filter mode for filter list\n"
 	"                                     mandatory in combination with --filterlist_ap and/or --filterlist_client\n"
@@ -8130,7 +8131,7 @@ printf("%s %s  (C) %s ZeroBeat\n"
 	"                                        only interact with ACCESS POINTs and CLIENTs from this list\n"
 	"                                        not recommended, because some useful frames could be filtered out\n"
 	"                                     using a filter list doesn't have an affect on rca scan\n"
-	"                                     only for testing usefull - devices to be protected should be added to BPF\n"
+	"                                     only for testing useful - devices to be protected should be added to BPF\n"
 	"                                     notice: this filter option will let hcxdumptool protect or attack a target - it is neither a capture nor a display filter\n" 
 	"--filterlist_ap=<file or MAC>      : ACCESS POINT MAC or MAC filter list\n"
 	"                                     format: 112233445566, 11:22:33:44:55:66, 11-22-33-44-55-66 # comment\n"
@@ -8241,6 +8242,10 @@ printf("%s %s  (C) %s ZeroBeat\n"
 	"                                     otherwise hcxdumptool will not work as expected\n"
 	"--check_injection                  : run antenna test and packet injection test to determine that driver support full packet injection\n"
 	"                                     packet injection will not work as expected if the Wireless Regulatory Domain is unset\n"
+	"--force_interface                  : ignore all ioctl() warnings and error counter\n"
+	"                                     allow hcxdumptool to run on a virtual NETLINK monitor interface\n"
+	"                                     warning: packet injection and/or channel change may not work as expected\n"
+	"                                     you have been warned: do not report issues!\n"
 	"--example                          : show abbreviations and example command lines\n"
 	"--help                             : show this help\n"
 	"--version                          : show version\n"
@@ -8384,6 +8389,7 @@ static const struct option long_options[] =
 	{"client_port",			required_argument,	NULL,	HCX_CLIENT_PORT},
 	{"check_driver",		no_argument,		NULL,	HCX_CHECK_DRIVER},
 	{"check_injection",		no_argument,		NULL,	HCX_CHECK_INJECTION},
+	{"force_interface",		no_argument,		NULL,	HCX_FORCE_INTERFACE},
 	{"version",			no_argument,		NULL,	HCX_VERSION},
 	{"example",			no_argument,		NULL,	HCX_EXAMPLE},
 	{"help",			no_argument,		NULL,	HCX_HELP},
@@ -8430,6 +8436,7 @@ attackresumecount = ATTACKRESUME_MAX;
 owm1m2roguemax = OW_M1M2ROGUE_MAX;
 reasoncode = WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA;
 myoui_client = 0;
+forceinterfaceflag = false;
 rcascanflag = false;
 targetscanflag = false;
 beaconactiveflag = false;
@@ -8840,6 +8847,10 @@ while((auswahl = getopt_long(argc, argv, short_options, long_options, &index)) !
 
 		case HCX_CHECK_INJECTION:
 		injectionflag = true;
+		break;
+
+		case HCX_FORCE_INTERFACE:
+		forceinterfaceflag = true;
 		break;
 
 		case HCX_SHOW_INTERFACES:

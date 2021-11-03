@@ -1,12 +1,8 @@
 hcxdumptool
 ==============
 
-Small tool to capture packets from wlan devices and detect weak point within own WiFi networks.
-After capturing, upload the "uncleaned" pcapng file here https://wpa-sec.stanev.org/?submit
-to see if your ACCESS POINT or the CLIENT is vulnerable by using common wordlists.
-To reduce dump file size, gzip (.gz) compression is supported.
-Convert the pcapng file to WPA-PBKDF2-PMKID+EAPOL hashline (22000) with hcxpcapngtool (hcxtools)
-and check if PreSharedKey or PlainMasterKey was transmitted unencrypted.
+Small tool to capture packets from wlan devices and to detect weak points within own WiFi networks
+(e.g.: PreSharedKey or PlainMasterKey is transmitted unencrypted by a CLIENT).
 
 
 Brief description
@@ -112,7 +108,7 @@ Requirements
 
 * Chipset must be able to run in monitor mode and driver must support monitor mode as well as full packet injection. Recommended: MEDIATEK (MT7601) or RALINK (RT2870, RT3070, RT5370) chipset 
 
-* gcc 10 recommended (deprecated versions are not supported: https://gcc.gnu.org/)
+* gcc >= 11 recommended (deprecated versions are not supported: https://gcc.gnu.org/)
 
 * libopenssl and openssl-dev installed
 
